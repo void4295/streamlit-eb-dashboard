@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EB Process Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #F5F6F8;
+  color: #1A1D23;
+  min-height: 100vh;
+}
+.page { max-width: 980px; margin: 0 auto; padding: 28px 20px 40px; }
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header-left { display: flex; align-items: baseline; gap: 10px; }
+.header-title { font-size: 20px; font-weight: 600; color: #1A1D23; letter-spacing: -0.3px; }
+.header-subtitle { font-size: 13px; color: #8A909C; }
+
+/* Month selector */
+.month-select-wrap { position: relative; }
+.month-select {
+  appearance: none;
+  background: #fff;
+  border: 1px solid #DDE1EA;
+  border-radius: 8px;
+  padding: 7px 32px 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1A1D23;
+  cursor: pointer;
+  outline: none;
+  transition: border-color .15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.month-select:hover { border-color: #3B7DD8; }
+.month-select:focus { border-color: #3B7DD8; box-shadow: 0 0 0 3px rgba(59,125,216,.12); }
+.month-select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 12px; top: 50%;
+  transform: translateY(-50%);
+  width: 0; height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid #8A909C;
+  pointer-events: none;
+}
+
+/* No-data banner */
+.no-data-banner {
+  display: none;
+  background: #FFF8EC;
+  border: 1px solid #F4C97A;
+  border-radius: 10px;
+  padding: 18px 20px;
+  font-size: 13px;
+  color: #7A4F0A;
+  margin-bottom: 20px;
+}
+
+/* ── Section label ── */
+.section-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #8A909C;
+  margin-bottom: 10px;
+}
+
+/* ── KPI grid ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.kpi {
+  background: #fff;
+  border: 1px solid #EAEDF3;
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.kpi .val { font-size: 22px; font-weight: 600; color: #1A1D23; line-height: 1.1; }
+.kpi .lbl { font-size: 12px; color: #6B7280; margin-top: 5px; }
+.kpi .sub { font-size: 10.5px; color: #9CA3AF; margin-top: 2px; }
+
+/* ── Cards ── */
+.card {
+  background: #fff;
+  border: 1px solid #EAEDF3;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.card-title { font-size: 12.5px; font-weight: 600; color: #4B5563; margin-bottom: 14px; letter-spacing: -0.1px; }
+
+/* ── Layouts ── */
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.row3 { display: grid; grid-template-columns: 1.45fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+/* ── Legend ── */
+.legend-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; font-size: 11px; color: #6B7280; }
+.legend-row span { display: flex; align-items: center; gap: 5px; }
+.legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── Table ── */
+.tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tbl th {
+  text-align: left; font-weight: 600; font-size: 10.5px; color: #9CA3AF;
+  border-bottom: 1px solid #F0F2F5; padding: 6px 8px;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.tbl td { padding: 8px 8px; border-bottom: 1px solid #F5F6F8; color: #1A1D23; }
+.tbl tr:last-child td { border-bottom: none; }
+
+/* ── Badges ── */
+.badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+.badge-blue   { background: #EBF3FD; color: #1B5EA9; }
+.badge-teal   { background: #E0F6EE; color: #0A5740; }
+.badge-amber  { background: #FEF3E2; color: #7C4F08; }
+.badge-purple { background: #EEECFE; color: #3E32A0; }
+
+/* ── Bar mini ── */
+.bar-bg { background: #F0F2F5; border-radius: 3px; height: 5px; width: 100%; margin-top: 4px; }
+.bar-fill { height: 5px; border-radius: 3px; transition: width .4s ease; }
+
+/* ── Footer ── */
+.footer { font-size: 11px; color: #9CA3AF; margin-top: 12px; }
+
+@media (max-width: 560px) {
+  .row2, .row3 { grid-template-columns: 1fr; }
+  .header { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-title">EB Process Dashboard</div>
+      <div class="header-subtitle" id="headerMonth">April 2026</div>
+    </div>
+    <div class="month-select-wrap">
+      <select class="month-select" id="monthSelect" onchange="switchMonth(this.value)">
+        <option value="apr2026" selected>April 2026</option>
+        <option value="jan2026">January 2026</option>
+        <option value="feb2026">February 2026</option>
+        <option value="mar2026">March 2026</option>
+        <option value="may2026">May 2026</option>
+        <option value="jun2026">June 2026</option>
+        <option value="jul2026">July 2026</option>
+        <option value="aug2026">August 2026</option>
+        <option value="sep2026">September 2026</option>
+        <option value="oct2026">October 2026</option>
+        <option value="nov2026">November 2026</option>
+        <option value="dec2026">December 2026</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- No data banner (hidden by default) -->
+  <div class="no-data-banner" id="noDataBanner">
+    No data available for this month yet. Showing placeholder — upload batch records to populate.
+  </div>
+
+  <!-- KPIs -->
+  <div class="section-label">Monthly KPIs</div>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="val" id="kpiBoxes">499</div><div class="lbl">Boxes processed</div></div>
+    <div class="kpi"><div class="val" id="kpiBatches">29</div><div class="lbl">Total batches</div></div>
+    <div class="kpi"><div class="val" id="kpiProdHrs">13.95 h</div><div class="lbl">Box productive hrs</div></div>
+    <div class="kpi"><div class="val" id="kpiTotalHrs">62.48 h</div><div class="lbl">Total productive hrs</div></div>
+    <div class="kpi"><div class="val" id="kpiBoxHr">41.5</div><div class="lbl">Avg boxes / hr</div><div class="sub">productive hrs only</div></div>
+    <div class="kpi"><div class="val" id="kpiBoxBatch">17.2</div><div class="lbl">Avg boxes / batch</div></div>
+    <div class="kpi"><div class="val" id="kpiCustomers">7</div><div class="lbl">Customers served</div></div>
+  </div>
+
+  <!-- Row 3: Customer bar + Hours donut -->
+  <div class="row3">
+    <div class="card">
+      <div class="card-title">Boxes processed by customer</div>
+      <div class="legend-row">
+        <span><span class="legend-dot" style="background:#3B7DD8;"></span>Beltree</span>
+        <span><span class="legend-dot" style="background:#1D9E75;"></span>Terrasoul</span>
+        <span><span class="legend-dot" style="background:#BA7517;"></span>Others</span>
+      </div>
+      <div style="position:relative;height:200px;">
+        <canvas id="custChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Productive hours split</div>
+      <div class="legend-row">
+        <span><span class="legend-dot" style="background:#7F77DD;"></span>Gemstone</span>
+        <span><span class="legend-dot" style="background:#3B7DD8;"></span>Box processing</span>
+        <span><span class="legend-dot" style="background:#EF9F27;"></span>Trials</span>
+      </div>
+      <div style="position:relative;height:170px;">
+        <canvas id="hoursChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Daily batches + Dose dist -->
+  <div class="row2">
+    <div class="card">
+      <div class="card-title">Daily batch activity</div>
+      <div style="position:relative;height:160px;">
+        <canvas id="dailyChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Dose distribution across batches</div>
+      <div style="position:relative;height:160px;">
+        <canvas id="doseChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Customer summary + Efficiency -->
+  <div class="row2">
+    <div class="card">
+      <div class="card-title">Customer summary</div>
+      <table class="tbl">
+        <thead>
+          <tr><th>Customer</th><th>Boxes</th><th>Batches</th><th>Type</th></tr>
+        </thead>
+        <tbody id="custTableBody">
+          <tr><td>Beltree</td><td>277</td><td>11</td><td><span class="badge badge-blue">PP vials</span></td></tr>
+          <tr><td>Terrasoul</td><td>212</td><td>15</td><td><span class="badge badge-blue">PP vials</span></td></tr>
+          <tr><td>PESU Institute</td><td>5</td><td>1</td><td><span class="badge badge-teal">Hydrogel</span></td></tr>
+          <tr><td>Serum Institute</td><td>2</td><td>1</td><td><span class="badge badge-blue">PP vials</span></td></tr>
+          <tr><td>HCL</td><td>3</td><td>1</td><td><span class="badge badge-amber">Tubes</span></td></tr>
+          <tr><td>Supreme Gems</td><td>—</td><td>—</td><td><span class="badge badge-purple">Gemstone</span></td></tr>
+          <tr><td>Shifa Impex</td><td>—</td><td>—</td><td><span class="badge badge-purple">Gemstone</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">Processing efficiency by customer</div>
+      <div id="efficiencyBars" style="display:flex;flex-direction:column;gap:12px;padding-top:4px;">
+        <!-- filled by JS -->
+      </div>
+    </div>
+  </div>
+
+  <div class="footer" id="footerNote">
+    Data: April 2026 EB facility batch records &nbsp;·&nbsp; Gemstone customers (Supreme Gems, Shifa Impex) excluded from box/batch metrics as qty not recorded
+  </div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────
+   DATA STORE — add future months here
+───────────────────────────────────────────── */
+const MONTH_DATA = {
+  apr2026: {
+    label: 'April 2026',
+    kpi: {
+      boxes: 499, batches: 29,
+      boxProdHrs: 13.95, totalProdHrs: 62.48,
+      avgBoxHr: 41.5, avgBoxBatch: 17.2, customers: 7
+    },
+    custBar: {
+      labels: ['Beltree','Terrasoul','PESU\nInstitute','Serum\nInstitute','HCL'],
+      data:   [277, 212, 5, 2, 3],
+      colors: ['#3B7DD8','#1D9E75','#7F77DD','#EF9F27','#D85A30']
+    },
+    hoursDonut: {
+      labels: ['Gemstone irradiation','Box processing','Trials'],
+      data:   [48.53, 13.95, 2.13],
+      colors: ['#7F77DD','#3B7DD8','#EF9F27']
+    },
+    daily: {
+      labels: ['03 Apr','04 Apr','06 Apr','07 Apr','10 Apr','22 Apr','23 Apr','24 Apr','27 Apr'],
+      data:   [3, 9, 1, 3, 1, 1, 5, 5, 1]
+    },
+    dose: {
+      labels: ['17.5 kGy','25 kGy','40 kGy','65 kGy','Multi-dose\n(PESU)','2000 kGy\n(Gems)'],
+      data:   [15, 11, 1, 1, 1, 2],
+      colors: ['#1D9E75','#3B7DD8','#EF9F27','#D85A30','#A0C4A0','#7F77DD']
+    },
+    custTable: [
+      { name: 'Beltree',         boxes: '277', batches: '11', type: 'PP vials',   badge: 'badge-blue'   },
+      { name: 'Terrasoul',       boxes: '212', batches: '15', type: 'PP vials',   badge: 'badge-blue'   },
+      { name: 'PESU Institute',  boxes: '5',   batches: '1',  type: 'Hydrogel',   badge: 'badge-teal'   },
+      { name: 'Serum Institute', boxes: '2',   batches: '1',  type: 'PP vials',   badge: 'badge-blue'   },
+      { name: 'HCL',             boxes: '3',   batches: '1',  type: 'Tubes',      badge: 'badge-amber'  },
+      { name: 'Supreme Gems',    boxes: '—',   batches: '—',  type: 'Gemstone',   badge: 'badge-purple' },
+      { name: 'Shifa Impex',     boxes: '—',   batches: '—',  type: 'Gemstone',   badge: 'badge-purple' },
+    ],
+    efficiency: [
+      { name: 'Beltree',         val: 25.2, pct: 61, color: '#3B7DD8' },
+      { name: 'Terrasoul',       val: 14.1, pct: 34, color: '#1D9E75' },
+      { name: 'PESU Institute',  val: 5.0,  pct: 12, color: '#7F77DD' },
+      { name: 'HCL',             val: 3.0,  pct: 7,  color: '#D85A30' },
+      { name: 'Serum Institute', val: 2.0,  pct: 5,  color: '#EF9F27' },
+    ],
+    footerNote: 'Data: April 2026 EB facility batch records &nbsp;·&nbsp; Gemstone customers (Supreme Gems, Shifa Impex) excluded from box/batch metrics as qty not recorded'
+  }
+  /* Add future months below, e.g.:
+  may2026: { label: 'May 2026', kpi: {...}, ... }
+  */
+};
+
+/* ─────────────────────────────────────────────
+   CHART INSTANCES
+───────────────────────────────────────────── */
+let charts = {};
+
+const GRID_COLOR = 'rgba(0,0,0,0.05)';
+const TICK_COLOR = '#9CA3AF';
+
+function makeChart(id, config) {
+  if (charts[id]) { charts[id].destroy(); }
+  charts[id] = new Chart(document.getElementById(id), config);
+}
+
+function renderCharts(d) {
+  // Customer bar
+  makeChart('custChart', {
+    type: 'bar',
+    data: {
+      labels: d.custBar.labels,
+      datasets: [{ data: d.custBar.data, backgroundColor: d.custBar.colors, borderWidth: 0, borderRadius: 5 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + c.raw + ' boxes' } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: TICK_COLOR, font: { size: 11 } } },
+        y: { grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR, font: { size: 11 } } }
+      }
+    }
+  });
+
+  // Hours donut
+  const totalHrs = d.hoursDonut.data.reduce((a,b) => a+b, 0);
+  makeChart('hoursChart', {
+    type: 'doughnut',
+    data: {
+      labels: d.hoursDonut.labels,
+      datasets: [{ data: d.hoursDonut.data, backgroundColor: d.hoursDonut.colors, borderWidth: 0, hoverOffset: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => ' ' + c.raw.toFixed(2) + ' h (' + (c.raw/totalHrs*100).toFixed(1) + '%)' } }
+      }
+    }
+  });
+
+  // Daily batches
+  makeChart('dailyChart', {
+    type: 'bar',
+    data: {
+      labels: d.daily.labels,
+      datasets: [{ label: 'Batches', data: d.daily.data, backgroundColor: '#3B7DD8', borderWidth: 0, borderRadius: 3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: TICK_COLOR, font: { size: 9 }, maxRotation: 45, autoSkip: false } },
+        y: { grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR, font: { size: 11 }, stepSize: 1 } }
+      }
+    }
+  });
+
+  // Dose dist
+  makeChart('doseChart', {
+    type: 'bar',
+    data: {
+      labels: d.dose.labels,
+      datasets: [{ label: 'Batches', data: d.dose.data, backgroundColor: d.dose.colors, borderWidth: 0, borderRadius: 3 }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR, font: { size: 11 }, stepSize: 2 } },
+        y: { grid: { display: false }, ticks: { color: TICK_COLOR, font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function renderKPIs(d) {
+  const k = d.kpi;
+  document.getElementById('kpiBoxes').textContent    = k.boxes;
+  document.getElementById('kpiBatches').textContent  = k.batches;
+  document.getElementById('kpiProdHrs').textContent  = k.boxProdHrs.toFixed(2) + ' h';
+  document.getElementById('kpiTotalHrs').textContent = k.totalProdHrs.toFixed(2) + ' h';
+  document.getElementById('kpiBoxHr').textContent    = k.avgBoxHr;
+  document.getElementById('kpiBoxBatch').textContent = k.avgBoxBatch;
+  document.getElementById('kpiCustomers').textContent= k.customers;
+}
+
+function renderTable(d) {
+  const tbody = document.getElementById('custTableBody');
+  tbody.innerHTML = d.custTable.map(r =>
+    `<tr>
+      <td>${r.name}</td>
+      <td>${r.boxes}</td>
+      <td>${r.batches}</td>
+      <td><span class="badge ${r.badge}">${r.type}</span></td>
+    </tr>`
+  ).join('');
+}
+
+function renderEfficiency(d) {
+  const wrap = document.getElementById('efficiencyBars');
+  wrap.innerHTML = d.efficiency.map(e =>
+    `<div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;">
+        <span style="color:#1A1D23">${e.name}</span>
+        <span style="color:#6B7280">${e.val} boxes/batch</span>
+      </div>
+      <div class="bar-bg"><div class="bar-fill" style="background:${e.color};width:${e.pct}%;"></div></div>
+    </div>`
+  ).join('');
+}
+
+/* ─────────────────────────────────────────────
+   MONTH SWITCH
+───────────────────────────────────────────── */
+function switchMonth(key) {
+  const banner = document.getElementById('noDataBanner');
+  const d = MONTH_DATA[key];
+  document.getElementById('headerMonth').textContent = MONTH_DATA[key]?.label || key;
+
+  if (!d) {
+    // Month not yet available
+    banner.style.display = 'block';
+    return;
+  }
+  banner.style.display = 'none';
+  renderKPIs(d);
+  renderTable(d);
+  renderEfficiency(d);
+  renderCharts(d);
+  document.getElementById('footerNote').innerHTML = d.footerNote;
+}
+
+// Initial render
+switchMonth('apr2026');
+</script>
+</body>
+</html>
